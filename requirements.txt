@@ -1,3 +1,4 @@
 openai>=1.107.0,<2
 bibtexparser>=1.4.1,<2
-streamlit>=1.30.0 
+streamlit>=1.30.0
+pydantic>=2.0.0,<3 

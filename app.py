@@ -69,6 +69,12 @@ with st.sidebar:
         height=120,
     )
 
+    use_structured = st.checkbox(
+        "Use Structured Output",
+        value=False,
+        help="Use OpenAI JSON Schema for better format control (OpenAI only, supported by all current models)",
+    )
+
 
 bibtex_content = st.text_area(
     "BibTeX Content",
@@ -101,12 +107,25 @@ if st.button("Fix BibTeX", type="primary"):
         st.error("Please enter BibTeX content.")
     else:
         try:
+            # For structured output, ensure compatible model
+            final_model = selected_model
+            final_use_structured = use_structured
+
+            if use_structured and effective_router == "openrouter":
+                st.warning(
+                    "Structured output is only available with OpenAI API. Switching to regular mode."
+                )
+                final_use_structured = False
+            # All current models (gpt-5-mini, gpt-5-nano, gpt-4.1) support structured outputs
+            # No model change needed - they all work with JSON Schema
+
             agent = BibFixAgent(
                 api_key=effective_api_key,
-                model=selected_model,
+                model=final_model,
                 router=effective_router,
                 openrouter_referer=openrouter_referer,
                 openrouter_title=openrouter_title,
+                use_structured_output=final_use_structured,
             )
             db = bibtexparser.loads(bibtex_content)
 

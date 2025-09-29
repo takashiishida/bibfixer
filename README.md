@@ -52,6 +52,20 @@ Use a custom prompt file (defaults to bundled `prompts/default.md`):
 bibfixer -i sample_input.bib --prompt-file prompts/default.md
 ```
 
+**NEW: Structured Output Mode** (for better format control):
+
+```bash
+bibfixer -i sample_input.bib --structured
+```
+
+The `--structured` flag uses OpenAI's JSON Schema functionality to enforce proper BibTeX formatting, reducing the chance of malformed output. This mode:
+
+- Ensures structured, reliable BibTeX output
+- Works only with OpenAI API (not OpenRouter)
+- Supported by all current models (gpt-5-mini, gpt-5-nano, gpt-4.1)
+- Provides better format sanity control
+- Falls back to traditional mode if structured output fails
+
 The complete revision instructions are in `prompts/default.md`. You can edit this file to match your style or point to another file using `--prompt-file`.
 
 ## Streamlit app
@@ -62,7 +76,7 @@ From the repo root, run:
 streamlit run app.py
 ```
 
-Use the sidebar to choose the API router and enter your API key (or set `OPENAI_API_KEY` / `OPENROUTER_API_KEY`), paste your BibTeX, then click "Fix BibTeX".
+Use the sidebar to choose the API router and enter your API key (or set `OPENAI_API_KEY` / `OPENROUTER_API_KEY`), paste your BibTeX, then click "Fix BibTeX". You can also enable "Use Structured Output" for better format control (OpenAI only).
 
 ## Examples
 

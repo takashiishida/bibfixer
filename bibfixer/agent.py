@@ -18,10 +18,12 @@ class BibFixAgent:
         router: str = "openai",
         openrouter_referer: Optional[str] = None,
         openrouter_title: Optional[str] = None,
+        use_structured_output: bool = False,
     ):
         self.router = (router or "openai").lower()
         self.model = model or "gpt-5-mini-2025-08-07"
         self.prompt_file_path = prompt_file
+        self.use_structured_output = use_structured_output
 
         if self.router == "openrouter":
             # Prefer explicit key, then OPENROUTER_API_KEY
@@ -97,6 +99,26 @@ class BibFixAgent:
             raise ValueError(f"Failed to parse BibTeX: {str(e)}")
 
     def revise_bibtex(self, bibtex_string: str, user_preferences: str = "") -> str:
+        # Use structured agent if requested and router is OpenAI
+        if self.use_structured_output and self.router == "openai":
+            try:
+                from .structured_agent import StructuredBibFixAgent
+
+                structured_agent = StructuredBibFixAgent(
+                    api_key=self.api_key,
+                    prompt_file=self.prompt_file_path,
+                    model=self.model,
+                    router=self.router,
+                    use_structured_output=True,
+                )
+                return structured_agent.revise_bibtex(bibtex_string, user_preferences)
+            except Exception as e:
+                print(
+                    f"Structured output failed ({str(e)}), falling back to traditional method",
+                    file=sys.stderr,
+                )
+
+        # Traditional method
         parsed = self.parse_bibtex(bibtex_string)
         prompt = self._create_prompt(bibtex_string, parsed, user_preferences)
         try:

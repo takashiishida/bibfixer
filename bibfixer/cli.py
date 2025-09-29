@@ -12,7 +12,8 @@ def main() -> None:
         description="Revise BibTeX entries using GPT-5-mini with web search"
     )
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         dest="input_file",
         required=True,
         help="Path to input .bib file",
@@ -29,6 +30,11 @@ def main() -> None:
     parser.add_argument("-o", "--output", help="Output file (default: print to stdout)")
     parser.add_argument(
         "--api-key", help="OpenAI API key (or set OPENAI_API_KEY env var)"
+    )
+    parser.add_argument(
+        "--structured",
+        action="store_true",
+        help="Use OpenAI JSON Schema for structured output (better format control, OpenAI only)",
     )
 
     args = parser.parse_args()
@@ -48,7 +54,11 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        agent = BibFixAgent(api_key=args.api_key, prompt_file=args.prompt_file)
+        agent = BibFixAgent(
+            api_key=args.api_key,
+            prompt_file=args.prompt_file,
+            use_structured_output=args.structured,
+        )
     except ValueError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
@@ -116,5 +126,3 @@ def main() -> None:
             "No output file specified. Preview shown above; not writing output file.",
             file=sys.stderr,
         )
-
-
