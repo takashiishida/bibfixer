@@ -10,16 +10,47 @@ from importlib import resources
 
 
 class BibFixAgent:
-    def __init__(self, api_key: Optional[str] = None, prompt_file: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError(
-                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as argument."
-            )
-
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-5-mini-2025-08-07"
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        prompt_file: Optional[str] = None,
+        model: Optional[str] = None,
+        router: str = "openai",
+        openrouter_referer: Optional[str] = None,
+        openrouter_title: Optional[str] = None,
+    ):
+        self.router = (router or "openai").lower()
+        self.model = model or "gpt-5-mini-2025-08-07"
         self.prompt_file_path = prompt_file
+
+        if self.router == "openrouter":
+            # Prefer explicit key, then OPENROUTER_API_KEY
+            self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "OpenRouter API key is required. Set OPENROUTER_API_KEY or pass api_key."
+                )
+            base_url = "https://openrouter.ai/api/v1"
+            default_headers: Dict[str, str] = {}
+            referer = openrouter_referer or os.getenv("HTTP_REFERER")
+            title = openrouter_title or os.getenv("X_TITLE")
+            if referer:
+                default_headers["HTTP-Referer"] = referer
+            if title:
+                default_headers["X-Title"] = title
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=base_url,
+                default_headers=default_headers if default_headers else None,
+            )
+        else:
+            # OpenAI default
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as argument."
+                )
+            self.client = OpenAI(api_key=self.api_key)
 
     def _load_instructions_from_file(self) -> Optional[str]:
         if self.prompt_file_path:
@@ -30,9 +61,11 @@ class BibFixAgent:
             except Exception:
                 pass
         try:
-            with resources.files("bibfixer.prompts").joinpath("default.md").open(
-                "r", encoding="utf-8"
-            ) as f:
+            with (
+                resources.files("bibfixer.prompts")
+                .joinpath("default.md")
+                .open("r", encoding="utf-8") as f
+            ):
                 return f.read().strip() + "\n"
         except Exception:
             return None
@@ -128,7 +161,7 @@ class BibFixAgent:
                 return revised_bibtex
             except Exception as e2:
                 raise RuntimeError(
-                    f"Failed to call OpenAI API: {str(e)} | Fallback also failed: {str(e2)}"
+                    f"Failed to call API: {str(e)} | Fallback also failed: {str(e2)}"
                 )
 
     def _create_prompt(
@@ -163,5 +196,3 @@ Original BibTeX entry:
 Return ONLY the corrected BibTeX entry, properly formatted. Do not include any explanation or additional text.
 """
         return prompt
-
-

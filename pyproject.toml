@@ -13,6 +13,7 @@ requires-python = ">=3.9"
 dependencies = [
   "openai>=1.107.0,<2",
   "bibtexparser>=1.4.1,<2",
+  "streamlit>=1.30.0",
 ]
 
 [project.scripts]
@@ -23,5 +24,6 @@ packages = ["bibfixer"]
 
 [tool.setuptools.package-data]
 bibfixer = ["prompts/default.md"]
+
 
 

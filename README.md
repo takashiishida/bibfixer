@@ -6,6 +6,7 @@
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg)
 ![Model](https://img.shields.io/badge/Model-GPT--5--mini-purple?logo=openai&logoColor=white)
 [![Changelog](https://img.shields.io/github/v/release/takashiishida/bibfixer?label=changelog)](https://github.com/takashiishida/bibfixer/releases)
+
 </div>
 
 A Python tool that fixes and standardizes your BibTeX. It not only completes entries with accurate metadata via LLM + web search capabilities, but also enforces a consistent style based on your preferences (e.g., venue naming, title casing, author format, page ranges). This removes the tedious manual work of hunting down sources and cleaning messy entries (like those copied from Google Scholar), producing a clean, uniform bib file. A consistent style improves readability and leaves a stronger impression on readers and reviewers.
@@ -13,11 +14,13 @@ A Python tool that fixes and standardizes your BibTeX. It not only completes ent
 ## Installation
 
 1. Install (from PyPI):
+
 ```bash
 pip install bibfixer
 ```
 
 2. Set up your OpenAI API key:
+
 ```bash
 export OPENAI_API_KEY='your-api-key-here'
 ```
@@ -25,30 +28,45 @@ export OPENAI_API_KEY='your-api-key-here'
 ## Usage
 
 Basic usage (input is required via `-i/--input`):
+
 ```bash
 bibfixer -i sample_input.bib
 ```
 
 With output file:
+
 ```bash
 bibfixer -i sample_input.bib -o corrected.bib
 ```
 
 With additional formatting preferences (`-p`):
+
 ```bash
 bibfixer -i sample_input.bib -p "Use NeurIPS instead of NIPS"
 ```
 
 Use a custom prompt file (defaults to bundled `prompts/default.md`):
+
 ```bash
 bibfixer -i sample_input.bib --prompt-file prompts/default.md
 ```
 
 The complete revision instructions are in `prompts/default.md`. You can edit this file to match your style or point to another file using `--prompt-file`.
 
+## Streamlit app
+
+From the repo root, run:
+
+```bash
+streamlit run app.py
+```
+
+Use the sidebar to choose the API router and enter your API key (or set `OPENAI_API_KEY` / `OPENROUTER_API_KEY`), paste your BibTeX, then click "Fix BibTeX".
+
 ## Examples
 
 Example (1) Original bib entry. Authors are missing and "ai" is not capitalized.
+
 ```bib
 @article{bai2022constitutional,
  author = {Bai, Yuntao and Kadavath, Saurav and Kundu, Sandipan and Askell, Amanda and Kernion, Jackson and Jones, Andy and Chen, Anna and Goldie, Anna and Mirhoseini, Azalia and McKinnon, Cameron and others},
@@ -59,6 +77,7 @@ Example (1) Original bib entry. Authors are missing and "ai" is not capitalized.
 ```
 
 Missing authors are added and title is capitalized properly:
+
 ```bib
 @article{bai2022constitutional,
   author = {Bai, Yuntao and Kadavath, Saurav and Kundu, Sandipan and Askell, Amanda and Kernion, Jackson and Jones, Andy and Chen, Anna and Goldie, Anna and Mirhoseini, Azalia and McKinnon, Cameron and Chen, Carol and Olsson, Catherine and Olah, Christopher and Hernandez, Danny and Drain, Dawn and Ganguli, Deep and Li, Dustin and Tran-Johnson, Eli and Perez, Ethan and Kerr, Jamie and Mueller, Jared and Ladish, Jeffrey and Landau, Joshua and Ndousse, Kamal and Lukosuite, Kamile and Lovitt, Liane and Sellitto, Michael and Elhage, Nelson and Schiefer, Nicholas and Mercado, Noemi and DasSarma, Nova and Lasenby, Robert and Larson, Robin and Ringer, Sam and Johnston, Scott and Kravec, Shauna and El Showk, Sheer and Fort, Stanislav and Lanham, Tamera and Telleen-Lawton, Timothy and Conerly, Tom and Henighan, Tom and Hume, Tristan and Bowman, Samuel R. and Hatfield-Dodds, Zac and Mann, Ben and Amodei, Dario and Joseph, Nicholas and McCandlish, Sam and Brown, Tom and Kaplan, Jared},
@@ -69,6 +88,7 @@ Missing authors are added and title is capitalized properly:
 ```
 
 Example (2) Original bib entry. This shows the arXiv version but the paper was published in ICML. "llm" needs to be capitalized.
+
 ```bib
 @article{khan2024debating,
  author = {Khan, Akbir and Hughes, John and Valentine, Dan and Ruis, Laura and Sachan, Kshitij and Radhakrishnan, Ansh and Grefenstette, Edward and Bowman, Samuel R and Rockt{\"a}schel, Tim and Perez, Ethan},
@@ -79,6 +99,7 @@ Example (2) Original bib entry. This shows the arXiv version but the paper was p
 ```
 
 arXiv is replaced with the conference information and appropriate title:
+
 ```bib
 @inproceedings{khan2024debating,
   author = {Khan, Akbir and Hughes, John and Valentine, Dan and Ruis, Laura and Sachan, Kshitij and Radhakrishnan, Ansh and Grefenstette, Edward and Bowman, Samuel R. and Rockt{\"a}schel, Tim and Perez, Ethan},
