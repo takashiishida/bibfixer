@@ -6,6 +6,7 @@
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg)
 ![Model](https://img.shields.io/badge/Model-GPT--5--mini-purple?logo=openai&logoColor=white)
 [![Changelog](https://img.shields.io/github/v/release/takashiishida/bibfixer?label=changelog)](https://github.com/takashiishida/bibfixer/releases)
+[![Streamlit App](https://img.shields.io/badge/Demo-Streamlit%20App-brightgreen?logo=streamlit)](https://takashiishida-bibfixer.streamlit.app/)
 
 </div>
 
