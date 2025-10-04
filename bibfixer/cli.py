@@ -9,10 +9,11 @@ from .agent import BibFixAgent
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Revise BibTeX entries using GPT-5-mini with web search"
+        description="Revise BibTeX entries using GPT with web search"
     )
     parser.add_argument(
-        "-i", "--input",
+        "-i",
+        "--input",
         dest="input_file",
         required=True,
         help="Path to input .bib file",
@@ -28,7 +29,14 @@ def main() -> None:
     )
     parser.add_argument("-o", "--output", help="Output file (default: print to stdout)")
     parser.add_argument(
-        "--api-key", help="OpenAI API key (or set OPENAI_API_KEY env var)"
+        "--api-key",
+        help="API key for the selected provider (or set corresponding env var)",
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["openai", "openrouter"],
+        default="openai",
+        help="API provider to use (default: openai). Set OPENAI_API_KEY or OPENROUTER_API_KEY env var accordingly.",
     )
 
     args = parser.parse_args()
@@ -38,7 +46,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        with open(args.input_file, "r") as f:
+        with open(args.input_file, "r", encoding="utf-8") as f:
             bibtex_content = f.read()
     except FileNotFoundError:
         print(f"Error: File '{args.input_file}' not found", file=sys.stderr)
@@ -48,7 +56,9 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        agent = BibFixAgent(api_key=args.api_key, prompt_file=args.prompt_file)
+        agent = BibFixAgent(
+            api_key=args.api_key, prompt_file=args.prompt_file, router=args.provider
+        )
     except ValueError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
@@ -102,7 +112,7 @@ def main() -> None:
 
     if args.output:
         try:
-            with open(args.output, "w") as f:
+            with open(args.output, "w", encoding="utf-8") as f:
                 f.write(combined)
             print(
                 f"Revised {len(entries)} entries written to {args.output}",
@@ -116,5 +126,3 @@ def main() -> None:
             "No output file specified. Preview shown above; not writing output file.",
             file=sys.stderr,
         )
-
-
