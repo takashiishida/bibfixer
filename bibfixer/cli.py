@@ -46,7 +46,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        with open(args.input_file, "r") as f:
+        with open(args.input_file, "r", encoding="utf-8") as f:
             bibtex_content = f.read()
     except FileNotFoundError:
         print(f"Error: File '{args.input_file}' not found", file=sys.stderr)
@@ -57,7 +57,7 @@ def main() -> None:
 
     try:
         agent = BibFixAgent(
-            api_key=args.api_key, prompt_file=args.prompt_file, provider=args.provider
+            api_key=args.api_key, prompt_file=args.prompt_file, router=args.provider
         )
     except ValueError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
@@ -112,7 +112,7 @@ def main() -> None:
 
     if args.output:
         try:
-            with open(args.output, "w") as f:
+            with open(args.output, "w", encoding="utf-8") as f:
                 f.write(combined)
             print(
                 f"Revised {len(entries)} entries written to {args.output}",

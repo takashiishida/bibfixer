@@ -35,16 +35,30 @@ with st.sidebar:
             value=os.getenv("OPENROUTER_API_KEY", ""),
         )
         # OpenRouter models
+        st.info(
+            "💡 **Model Selection Guide**: Choose models optimized for reasoning and text processing. For the most up-to-date model options and performance details, visit [OpenRouter Models](https://openrouter.ai/models)."
+        )
+        st.warning(
+            "⚠️ **Known Issues**: We've experienced failures with Qwen, Kimi, GLM, and some other models on OpenRouter. We're actively working to fix these compatibility issues. For now, we recommend using GPT, Claude, or Gemini models for the best experience."
+        )
         model_friendly = st.selectbox(
             "Model",
-            options=["gpt-5-mini", "gpt-5-nano", "gpt-4.1"],
+            options=[
+                "gpt-5-mini",
+                "gpt-5-nano",
+                "gpt-4.1",
+                "gemini-2.5-flash",
+                "claude-3.5-haiku",
+            ],
             index=0,
-            help="Select the model to use. Default is gpt-5-mini.",
+            help="Select the model to use. Default is gpt-5-mini. Visit https://openrouter.ai/models for detailed model comparisons.",
         )
         model_map = {
             "gpt-5-mini": "openai/gpt-5-mini",
             "gpt-5-nano": "openai/gpt-5-nano",
             "gpt-4.1": "openai/gpt-4.1",
+            "gemini-2.5-flash": "google/gemini-2.5-flash",
+            "claude-3.5-haiku": "anthropic/claude-3.5-haiku",
         }
     else:  # OpenAI
         api_key = st.text_input(
@@ -108,7 +122,7 @@ if st.button("Fix BibTeX", type="primary"):
         st.error("Please enter BibTeX content.")
     else:
         try:
-            agent = BibFixAgent(api_key=effective_api_key, provider=provider_lower)
+            agent = BibFixAgent(api_key=effective_api_key, router=provider_lower)
             # Apply selected model to agent
             agent.model = selected_model
             db = bibtexparser.loads(bibtex_content)

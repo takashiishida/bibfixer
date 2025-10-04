@@ -11,50 +11,45 @@ class BibFixAgent:
         self,
         api_key: Optional[str] = None,
         prompt_file: Optional[str] = None,
-        provider: str = "openai",
+        model: Optional[str] = None,
+        router: str = "openai",
+        openrouter_referer: Optional[str] = None,
+        openrouter_title: Optional[str] = None,
+        use_structured_output: bool = False,
     ):
-        self.provider = provider.lower()
-        self.api_key = api_key or self._get_default_api_key()
-        if not self.api_key:
-            raise ValueError(
-                f"{self.provider.upper()} API key is required. Set {self._get_env_var_name()} environment variable or pass it as argument."
-            )
-
-        self.client = self._create_client()
-        self.model = self._get_default_model()
+        self.router = (router or "openai").lower()
+        self.model = model or "gpt-5-mini-2025-08-07"
         self.prompt_file_path = prompt_file
+        self.use_structured_output = use_structured_output
 
-    def _get_default_api_key(self) -> Optional[str]:
-        """Get default API key based on provider."""
-        if self.provider == "openrouter":
-            return os.getenv("OPENROUTER_API_KEY")
-        return os.getenv("OPENAI_API_KEY")
-
-    def _get_env_var_name(self) -> str:
-        """Get environment variable name for the provider."""
-        if self.provider == "openrouter":
-            return "OPENROUTER_API_KEY"
-        return "OPENAI_API_KEY"
-
-    def _create_client(self) -> OpenAI:
-        """Create OpenAI client configured for the selected provider."""
-        if self.provider == "openrouter":
-            return OpenAI(
-                base_url="https://openrouter.ai/api/v1",
+        if self.router == "openrouter":
+            # Prefer explicit key, then OPENROUTER_API_KEY
+            self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "OpenRouter API key is required. Set OPENROUTER_API_KEY or pass api_key."
+                )
+            base_url = "https://openrouter.ai/api/v1"
+            default_headers: Dict[str, str] = {}
+            referer = openrouter_referer or os.getenv("HTTP_REFERER")
+            title = openrouter_title or os.getenv("X_TITLE")
+            if referer:
+                default_headers["HTTP-Referer"] = referer
+            if title:
+                default_headers["X-Title"] = title
+            self.client = OpenAI(
                 api_key=self.api_key,
+                base_url=base_url,
+                default_headers=default_headers if default_headers else None,
             )
-        elif self.provider == "openai":
-            return OpenAI(api_key=self.api_key)
         else:
-            raise ValueError(
-                f"Unsupported provider: {self.provider}. Supported: 'openai', 'openrouter'"
-            )
-
-    def _get_default_model(self) -> str:
-        """Get default model based on provider."""
-        if self.provider == "openrouter":
-            return "openai/gpt-4o"  # Default OpenRouter model
-        return "gpt-5-mini-2025-08-07"  # Default OpenAI model
+            # OpenAI default
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as argument."
+                )
+            self.client = OpenAI(api_key=self.api_key)
 
     def _load_instructions_from_file(self) -> Optional[str]:
         if self.prompt_file_path:
@@ -80,7 +75,12 @@ class BibFixAgent:
             if not bib_database.entries:
                 raise ValueError("No valid BibTeX entries found")
             entry = bib_database.entries[0]
-            title = entry.get("title", "").strip("{}")
+            title = entry.get("title", "").strip()
+            # Remove common BibTeX title wrappers
+            if title.startswith("{") and title.endswith("}"):
+                title = title[1:-1].strip()
+            if title.startswith("{{") and title.endswith("}}"):
+                title = title[2:-2].strip()
             authors_str = entry.get("author", "")
             if authors_str:
                 if " and " in authors_str:
@@ -101,36 +101,33 @@ class BibFixAgent:
             raise ValueError(f"Failed to parse BibTeX: {str(e)}")
 
     def revise_bibtex(self, bibtex_string: str, user_preferences: str = "") -> str:
+        if not bibtex_string or not bibtex_string.strip():
+            raise ValueError("BibTeX string cannot be empty")
+
+        # Note: Structured output mode is not yet implemented
+        if self.use_structured_output and self.router == "openai":
+            print(
+                "Warning: Structured output mode is not yet implemented, using traditional method",
+                file=sys.stderr,
+            )
+
+        # Traditional method
         parsed = self.parse_bibtex(bibtex_string)
         prompt = self._create_prompt(bibtex_string, parsed, user_preferences)
         try:
-            full_prompt = (
-                """You are a precise academic assistant that corrects and completes BibTeX entries. Always return valid BibTeX format.
-
-"""
-                + prompt
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a precise academic assistant that corrects and completes BibTeX entries. Always return valid BibTeX format. Use your knowledge to correct and complete the entry as best as you can.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
             )
-            response = self.client.responses.create(
-                model=self.model, input=full_prompt, tools=[{"type": "web_search"}]
-            )
-            revised_bibtex = None
-            if hasattr(response, "output_text"):
-                revised_bibtex = getattr(response, "output_text", None)
-            elif hasattr(response, "__iter__"):
-                for item in response:
-                    if hasattr(item, "type") and item.type == "message":
-                        if hasattr(item, "content") and item.content:
-                            for content_item in item.content:
-                                if hasattr(content_item, "text"):
-                                    revised_bibtex = content_item.text
-                                    break
-                        break
-            elif hasattr(response, "output"):
-                revised_bibtex = response.output
-            else:
-                revised_bibtex = str(response)
-            if not revised_bibtex:
-                raise ValueError("Could not extract BibTeX from response")
+            revised_bibtex = response.choices[0].message.content
+            if not revised_bibtex or not revised_bibtex.strip():
+                raise ValueError("Received empty response from API")
             try:
                 bibtexparser.loads(revised_bibtex)
             except Exception:
@@ -139,34 +136,7 @@ class BibFixAgent:
                 )
             return revised_bibtex
         except Exception as e:
-            try:
-                print(
-                    f"Note: Responses API failed ({str(e)}), falling back to chat completions API without web search",
-                    file=sys.stderr,
-                )
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a precise academic assistant that corrects and completes BibTeX entries. Always return valid BibTeX format. Use your knowledge to correct and complete the entry as best as you can.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                )
-                revised_bibtex = response.choices[0].message.content
-                try:
-                    bibtexparser.loads(revised_bibtex)
-                except Exception:
-                    print(
-                        "Warning: Response may not be valid BibTeX format",
-                        file=sys.stderr,
-                    )
-                return revised_bibtex
-            except Exception as e2:
-                raise RuntimeError(
-                    f"Failed to call OpenAI API: {str(e)} | Fallback also failed: {str(e2)}"
-                )
+            raise RuntimeError(f"Failed to call API: {str(e)}")
 
     def _create_prompt(
         self, original_bibtex: str, parsed: Dict[str, Any], preferences: str
