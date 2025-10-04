@@ -17,26 +17,57 @@ st.caption("Fix and complete BibTeX entries using GPT with web search.")
 
 with st.sidebar:
     st.header("Settings")
-    api_key = st.text_input(
-        "OpenAI API Key",
-        type="password",
-        placeholder="Enter your OpenAI API key here",
-        help="Used for OpenAI API. Not stored.",
-        value=os.getenv("OPENAI_API_KEY", ""),
+
+    provider = st.selectbox(
+        "API Provider",
+        options=["OpenAI", "OpenRouter"],
+        index=0,
+        help="Select the API provider to use.",
     )
 
-    model_friendly = st.selectbox(
-        "Model",
-        options=["gpt-5-mini", "gpt-5-nano", "gpt-4.1"],
-        index=0,
-        help="Select the model to use. Default is gpt-5-mini.",
-    )
-    model_map = {
-        "gpt-5-mini": "gpt-5-mini-2025-08-07",
-        "gpt-5-nano": "gpt-5-nano-2025-08-07",
-        "gpt-4.1": "gpt-4.1",
-    }
-    selected_model = model_map.get(model_friendly, "gpt-5-mini-2025-08-07")
+    # Dynamic API key input based on provider
+    if provider == "OpenRouter":
+        api_key = st.text_input(
+            "OpenRouter API Key",
+            type="password",
+            placeholder="Enter your OpenRouter API key here",
+            help="Used for OpenRouter API. Not stored.",
+            value=os.getenv("OPENROUTER_API_KEY", ""),
+        )
+        # OpenRouter models
+        model_friendly = st.selectbox(
+            "Model",
+            options=["gpt-5-mini", "gpt-5-nano", "gpt-4.1"],
+            index=0,
+            help="Select the model to use. Default is gpt-5-mini.",
+        )
+        model_map = {
+            "gpt-5-mini": "openai/gpt-5-mini",
+            "gpt-5-nano": "openai/gpt-5-nano",
+            "gpt-4.1": "openai/gpt-4.1",
+        }
+    else:  # OpenAI
+        api_key = st.text_input(
+            "OpenAI API Key",
+            type="password",
+            placeholder="Enter your OpenAI API key here",
+            help="Used for OpenAI API. Not stored.",
+            value=os.getenv("OPENAI_API_KEY", ""),
+        )
+        # OpenAI models
+        model_friendly = st.selectbox(
+            "Model",
+            options=["gpt-5-mini", "gpt-5-nano", "gpt-4.1"],
+            index=0,
+            help="Select the model to use. Default is gpt-5-mini.",
+        )
+        model_map = {
+            "gpt-5-mini": "gpt-5-mini-2025-08-07",
+            "gpt-5-nano": "gpt-5-nano-2025-08-07",
+            "gpt-4.1": "gpt-4.1",
+        }
+
+    selected_model = model_map.get(model_friendly, model_map[list(model_map.keys())[0]])
 
     preferences = st.text_area(
         "Formatting Preferences",
@@ -52,20 +83,32 @@ bibtex_content = st.text_area(
 )
 
 if st.button("Fix BibTeX", type="primary"):
-    # secrets/env fallback (OpenAI only)
-    effective_api_key = (
-        api_key
-        or (st.secrets.get("OPENAI_API_KEY") if hasattr(st, "secrets") else None)
-        or os.getenv("OPENAI_API_KEY")
-    )
+    # Dynamic API key fallback based on provider
+    provider_lower = provider.lower()
+    if provider == "OpenRouter":
+        effective_api_key = (
+            api_key
+            or (
+                st.secrets.get("OPENROUTER_API_KEY") if hasattr(st, "secrets") else None
+            )
+            or os.getenv("OPENROUTER_API_KEY")
+        )
+    else:  # OpenAI
+        effective_api_key = (
+            api_key
+            or (st.secrets.get("OPENAI_API_KEY") if hasattr(st, "secrets") else None)
+            or os.getenv("OPENAI_API_KEY")
+        )
 
     if not effective_api_key:
-        st.error("Please provide an API key (input or in secrets/environment).")
+        st.error(
+            f"Please provide a {provider} API key (input or in secrets/environment)."
+        )
     elif not bibtex_content:
         st.error("Please enter BibTeX content.")
     else:
         try:
-            agent = BibFixAgent(api_key=effective_api_key)
+            agent = BibFixAgent(api_key=effective_api_key, provider=provider_lower)
             # Apply selected model to agent
             agent.model = selected_model
             db = bibtexparser.loads(bibtex_content)

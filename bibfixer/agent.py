@@ -1,25 +1,60 @@
 import os
 import sys
 from typing import Optional, Dict, Any
-import json
 import bibtexparser
-from bibtexparser.bwriter import BibTexWriter
-from bibtexparser.bibdatabase import BibDatabase
 from openai import OpenAI
 from importlib import resources
 
 
 class BibFixAgent:
-    def __init__(self, api_key: Optional[str] = None, prompt_file: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        prompt_file: Optional[str] = None,
+        provider: str = "openai",
+    ):
+        self.provider = provider.lower()
+        self.api_key = api_key or self._get_default_api_key()
         if not self.api_key:
             raise ValueError(
-                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as argument."
+                f"{self.provider.upper()} API key is required. Set {self._get_env_var_name()} environment variable or pass it as argument."
             )
 
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-5-mini-2025-08-07"
+        self.client = self._create_client()
+        self.model = self._get_default_model()
         self.prompt_file_path = prompt_file
+
+    def _get_default_api_key(self) -> Optional[str]:
+        """Get default API key based on provider."""
+        if self.provider == "openrouter":
+            return os.getenv("OPENROUTER_API_KEY")
+        return os.getenv("OPENAI_API_KEY")
+
+    def _get_env_var_name(self) -> str:
+        """Get environment variable name for the provider."""
+        if self.provider == "openrouter":
+            return "OPENROUTER_API_KEY"
+        return "OPENAI_API_KEY"
+
+    def _create_client(self) -> OpenAI:
+        """Create OpenAI client configured for the selected provider."""
+        if self.provider == "openrouter":
+            return OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=self.api_key,
+            )
+        elif self.provider == "openai":
+            return OpenAI(api_key=self.api_key)
+        else:
+            raise ValueError(
+                f"Unsupported provider: {self.provider}. Supported: 'openai', 'openrouter'"
+            )
+
+    def _get_default_model(self) -> str:
+        """Get default model based on provider."""
+        if self.provider == "openrouter":
+            return "openai/gpt-4o"  # Default OpenRouter model
+        return "gpt-5-mini-2025-08-07"  # Default OpenAI model
 
     def _load_instructions_from_file(self) -> Optional[str]:
         if self.prompt_file_path:
@@ -30,9 +65,11 @@ class BibFixAgent:
             except Exception:
                 pass
         try:
-            with resources.files("bibfixer.prompts").joinpath("default.md").open(
-                "r", encoding="utf-8"
-            ) as f:
+            with (
+                resources.files("bibfixer.prompts")
+                .joinpath("default.md")
+                .open("r", encoding="utf-8") as f
+            ):
                 return f.read().strip() + "\n"
         except Exception:
             return None
@@ -163,5 +200,3 @@ Original BibTeX entry:
 Return ONLY the corrected BibTeX entry, properly formatted. Do not include any explanation or additional text.
 """
         return prompt
-
-
