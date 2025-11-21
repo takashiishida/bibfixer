@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bibfixer"
-version = "0.1.1"
+version = "0.1.2"
 description = "Fixes and standardizes BibTeX using LLM + web search"
 readme = "README.md"
 license = { file = "LICENSE" }

@@ -12,7 +12,7 @@ A Python tool that fixes and standardizes your BibTeX. It not only completes ent
 
 ## Examples
 
-Example (1) Original bib entry. Authors are missing and "ai" is not capitalized.
+Example (1) Original bib entry from Google Scholar. Additional authors are omitted and indicated by "and others", and "ai" is not capitalized.
 ```bib
 @article{bai2022constitutional,
  author = {Bai, Yuntao and Kadavath, Saurav and Kundu, Sandipan and Askell, Amanda and Kernion, Jackson and Jones, Andy and Chen, Anna and Goldie, Anna and Mirhoseini, Azalia and McKinnon, Cameron and others},
@@ -26,13 +26,13 @@ With bibfixer, missing authors are added and title is capitalized properly:
 ```bib
 @article{bai2022constitutional,
   author = {Bai, Yuntao and Kadavath, Saurav and Kundu, Sandipan and Askell, Amanda and Kernion, Jackson and Jones, Andy and Chen, Anna and Goldie, Anna and Mirhoseini, Azalia and McKinnon, Cameron and Chen, Carol and Olsson, Catherine and Olah, Christopher and Hernandez, Danny and Drain, Dawn and Ganguli, Deep and Li, Dustin and Tran-Johnson, Eli and Perez, Ethan and Kerr, Jamie and Mueller, Jared and Ladish, Jeffrey and Landau, Joshua and Ndousse, Kamal and Lukosuite, Kamile and Lovitt, Liane and Sellitto, Michael and Elhage, Nelson and Schiefer, Nicholas and Mercado, Noemi and DasSarma, Nova and Lasenby, Robert and Larson, Robin and Ringer, Sam and Johnston, Scott and Kravec, Shauna and El Showk, Sheer and Fort, Stanislav and Lanham, Tamera and Telleen-Lawton, Timothy and Conerly, Tom and Henighan, Tom and Hume, Tristan and Bowman, Samuel R. and Hatfield-Dodds, Zac and Mann, Ben and Amodei, Dario and Joseph, Nicholas and McCandlish, Sam and Brown, Tom and Kaplan, Jared},
-  title = {{Constitutional AI: Harmlessness from AI Feedback}},
+  title = {Constitutional {AI}: {H}armlessness from {AI} Feedback},
   journal = {arXiv preprint arXiv:2212.08073},
   year = {2022}
 }
 ```
 
-Example (2) Original bib entry. This shows the arXiv version but the paper was published in ICML. "llm" needs to be capitalized.
+Example (2) Original bib entry from Google Scholar. This shows the arXiv version but the paper was published in ICML. "llm" needs to be capitalized.
 ```bib
 @article{khan2024debating,
  author = {Khan, Akbir and Hughes, John and Valentine, Dan and Ruis, Laura and Sachan, Kshitij and Radhakrishnan, Ansh and Grefenstette, Edward and Bowman, Samuel R and Rockt{\"a}schel, Tim and Perez, Ethan},
@@ -46,11 +46,32 @@ With bibfixer, arXiv is replaced with the conference information and appropriate
 ```bib
 @inproceedings{khan2024debating,
   author = {Khan, Akbir and Hughes, John and Valentine, Dan and Ruis, Laura and Sachan, Kshitij and Radhakrishnan, Ansh and Grefenstette, Edward and Bowman, Samuel R. and Rockt{\"a}schel, Tim and Perez, Ethan},
-  title = {{Debating with More Persuasive LLMs Leads to More Truthful Answers}},
+  title = {Debating with More Persuasive {LLMs} Leads to More Truthful Answers},
   booktitle = {Proceedings of the 41st International Conference on Machine Learning},
   year = {2024},
   volume = {235},
   pages = {23662--23733}
+}
+```
+
+Example (3) Original bib entry from Google Scholar. Last author is missing due to a system issue of the distributor Penguin Random House. Subtitle and publisher needs to be capitalized appropriately.
+```bib
+@book{sugiyama2022machine,
+ title = {Machine learning from weak supervision: An empirical risk minimization approach},
+ author = {Sugiyama, Masashi and Bao, Han and Ishida, Takashi and Lu, Nan and Sakai, Tomoya},
+ year = {2022},
+ publisher = {MIT Press}
+}
+```
+
+With bibfixer, we have all authors and appropriate capitalization:
+```bib
+@book{sugiyama2022machine,
+  author = {Sugiyama, Masashi and Bao, Han and Ishida, Takashi and Lu, Nan and Sakai, Tomoya and Niu, Gang},
+  title = {Machine Learning from Weak Supervision: {A}n Empirical Risk Minimization Approach},
+  publisher = {{MIT} Press},
+  year = {2022},
+  pages = {320}
 }
 ```
 

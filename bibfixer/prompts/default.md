@@ -16,7 +16,15 @@ Instructions:
 
 3) Output formatting rules
    - Do NOT change the citation key (the part after `@type{` and before the comma). This is because I am already using this specific key in the paper.
-   - Use double curly braces around the `title` value to preserve capitalization, e.g., `title = {{Attention Is All You Need}}`.
+   - For the `title` field, do NOT wrap the entire title in double curly braces (because we will be using a bst file to control what should and shouldn't be capitalized.)
+   - Instead, use curly braces only around acronyms, proper nouns, the first character in the subtitle after the colon, and individual letters that must stay capitalized even when the BibTeX style downcases titles. For example:
+     - `title = {Constitutional {AI}: {H}armlessness from {AI} Feedback},`
+     - `title = {Debating with More Persuasive {LLMs} Leads to More Truthful Answers},`
+     - `title = {Image{N}et Large Scale Visual Recognition Challenge},`
+     - `title = {Attention Is All You Need},` (no extra braces needed).
+   - Similarly, for `booktitle`, `journal`, and `publisher`, use braces only where needed to preserve capitalization of acronyms and proper names, for example:
+     - `journal   = {{IEEE} Transactions on Pattern Analysis and Machine Intelligence},`
+     - `publisher = {{MIT} Press},`
    - For authors, prefer `Last, First` form and separate authors with ` and `.
    - List all authors and do not use `et al.` or `and others` (even when there are hundreds of authors).
    - Use the full conference name in `booktitle` (no acronyms), e.g., `Proceedings of the 41st International Conference on Machine Learning` instead of `Proceedings of the 41st ICML`. Do not include the acronym after the full name, e.g., do not write `Proceedings of the 41st International Conference on Machine Learning (ICML)`.
