@@ -1,11 +1,11 @@
 <div align="center">
 <img src="logo.png" alt="" width="450">
 
-[![PyPI version](https://badge.fury.io/py/bibfixer.svg?update=20250929)](https://pypi.org/project/bibfixer/)
+[![PyPI version](https://badge.fury.io/py/bibfixer.svg?update=20251204)](https://pypi.org/project/bibfixer/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg)
-![Model](https://img.shields.io/badge/Model-GPT--5--mini-purple?logo=openai&logoColor=white)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-purple.svg)
 [![Changelog](https://img.shields.io/github/v/release/takashiishida/bibfixer?label=changelog)](https://github.com/takashiishida/bibfixer/releases)
+[![Downloads](https://static.pepy.tech/badge/bibfixer)](https://pepy.tech/project/bibfixer)
 </div>
 
 A Python tool that fixes and standardizes your BibTeX. It not only completes entries with accurate metadata via LLM + web search capabilities, but also enforces a consistent style based on your preferences (e.g., venue naming, title casing, author format, page ranges). This removes the tedious manual work of hunting down sources and cleaning messy entries (like those copied from Google Scholar), producing a clean, uniform bib file. A consistent style improves readability and leaves a stronger impression on readers and reviewers.
