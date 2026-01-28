@@ -10,6 +10,11 @@
 
 A Python tool that fixes and standardizes your BibTeX. It not only completes entries with accurate metadata via LLM + web search capabilities, but also enforces a consistent style based on your preferences (e.g., venue naming, title casing, author format, page ranges). This removes the tedious manual work of hunting down sources and cleaning messy entries (like those copied from Google Scholar), producing a clean, uniform bib file. A consistent style improves readability and leaves a stronger impression on readers and reviewers.
 
+> [!WARNING]
+> bibfixer is experimental and uses LLM + web search, so it may occasionally produce incomplete or incorrect metadata/formatting. Always review the final `.bib` before submission. For known limitations and ongoing issues (and to report new ones), please see the GitHub Issues.
+
+
+
 ## Examples
 
 Example (1) Original bib entry from Google Scholar. Additional authors are omitted and indicated by "and others", and "ai" is not capitalized.
@@ -111,6 +116,12 @@ bibfixer -i sample_input.bib --prompt-file prompts/default.md
 
 The complete revision instructions are in `prompts/default.md`. You can edit this file to match your style or point to another file using `--prompt-file`.
 
+### Review
+Since bibfixer is experimental (see warning above), it's a good idea to diff the results. To quickly compare input and output, you can run:
+```bash
+diff -y --suppress-common-lines input.bib output.bib | less -R
+```
+
 ## Streamlit app
 
 In addition to the dependencies in `pyproject.toml`, install `streamlit>=1.30.0`.
@@ -120,10 +131,3 @@ From the repo root, run:
 ```bash
 streamlit run app.py
 ```
-
-> [!WARNING]
-> This tool uses LLM + web search and may occasionally produce incomplete or inaccurate metadata or formatting. Always review the final `.bib` before submission. To quickly compare input and output, you can run:
->
-> ```bash
-> diff -y --suppress-common-lines input.bib output.bib | less -R
-> ```
