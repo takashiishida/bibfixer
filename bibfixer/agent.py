@@ -10,15 +10,35 @@ from importlib import resources
 
 
 class BibFixAgent:
-    def __init__(self, api_key: Optional[str] = None, prompt_file: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
+    SUPPORTED_PROVIDERS = ("openai", "openrouter")
+    DEFAULT_MODELS = {
+        "openai": "gpt-5.2-2025-12-11",
+        "openrouter": "anthropic/claude-sonnet-4.5",
+    }
+
+    def __init__(self, api_key: Optional[str] = None, prompt_file: Optional[str] = None, provider: str = "openai"):
+        self.provider = provider.lower()
+        if self.provider not in self.SUPPORTED_PROVIDERS:
             raise ValueError(
-                "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as argument."
+                f"Unsupported provider '{provider}'. Choose from: {', '.join(self.SUPPORTED_PROVIDERS)}"
             )
 
-        self.client = OpenAI(api_key=self.api_key)
-        self.model = "gpt-5-mini-2025-08-07"
+        if self.provider == "openrouter":
+            self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "OpenRouter API key is required. Set OPENROUTER_API_KEY environment variable or pass it as argument."
+                )
+            self.client = OpenAI(api_key=self.api_key, base_url="https://openrouter.ai/api/v1")
+        else:
+            self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+            if not self.api_key:
+                raise ValueError(
+                    "OpenAI API key is required. Set OPENAI_API_KEY environment variable or pass it as argument."
+                )
+            self.client = OpenAI(api_key=self.api_key)
+
+        self.model = self.DEFAULT_MODELS[self.provider]
         self.prompt_file_path = prompt_file
 
     def _load_instructions_from_file(self) -> Optional[str]:
@@ -63,9 +83,37 @@ class BibFixAgent:
         except Exception as e:
             raise ValueError(f"Failed to parse BibTeX: {str(e)}")
 
+    def _call_chat_completions(self, prompt: str, model: str) -> str:
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a precise academic assistant that corrects and completes BibTeX entries. Always return valid BibTeX format. Use your knowledge to correct and complete the entry as best as you can.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+        )
+        revised_bibtex = response.choices[0].message.content
+        try:
+            bibtexparser.loads(revised_bibtex)
+        except Exception:
+            print(
+                "Warning: Response may not be valid BibTeX format",
+                file=sys.stderr,
+            )
+        return revised_bibtex
+
     def revise_bibtex(self, bibtex_string: str, user_preferences: str = "") -> str:
         parsed = self.parse_bibtex(bibtex_string)
         prompt = self._create_prompt(bibtex_string, parsed, user_preferences)
+
+        if self.provider == "openrouter":
+            return self._revise_openrouter(prompt)
+        else:
+            return self._revise_openai(prompt)
+
+    def _revise_openai(self, prompt: str) -> str:
         try:
             full_prompt = (
                 """You are a precise academic assistant that corrects and completes BibTeX entries. Always return valid BibTeX format.
@@ -107,36 +155,33 @@ class BibFixAgent:
                     f"Note: Responses API failed ({str(e)}), falling back to chat completions API without web search",
                     file=sys.stderr,
                 )
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "You are a precise academic assistant that corrects and completes BibTeX entries. Always return valid BibTeX format. Use your knowledge to correct and complete the entry as best as you can.",
-                        },
-                        {"role": "user", "content": prompt},
-                    ],
-                )
-                revised_bibtex = response.choices[0].message.content
-                try:
-                    bibtexparser.loads(revised_bibtex)
-                except Exception:
-                    print(
-                        "Warning: Response may not be valid BibTeX format",
-                        file=sys.stderr,
-                    )
-                return revised_bibtex
+                return self._call_chat_completions(prompt, self.model)
             except Exception as e2:
                 raise RuntimeError(
                     f"Failed to call OpenAI API: {str(e)} | Fallback also failed: {str(e2)}"
                 )
+
+    def _revise_openrouter(self, prompt: str) -> str:
+        # Append :online suffix to enable web search via Exa.ai
+        model = self.model
+        if not model.endswith(":online"):
+            model = model + ":online"
+        try:
+            return self._call_chat_completions(prompt, model)
+        except Exception as e:
+            raise RuntimeError(f"Failed to call OpenRouter API: {str(e)}")
 
     def _create_prompt(
         self, original_bibtex: str, parsed: Dict[str, Any], preferences: str
     ) -> str:
         title = parsed["title"]
         first_author = parsed["first_author"]
-        prompt = f"""Please search the web for the following academic paper and correct/complete its BibTeX entry:
+        if self.provider == "openai":
+            intro = "Please search the web for the following academic paper and correct/complete its BibTeX entry:"
+        else:
+            intro = "Using your knowledge and any available search capabilities, correct/complete the following BibTeX entry:"
+
+        prompt = f"""{intro}
 
 Title: "{title}"
 First Author: {first_author if first_author else "(unknown)"}
@@ -150,9 +195,8 @@ Original BibTeX entry:
         if external_instructions:
             prompt += "\n" + external_instructions
         else:
-            print(
-                "Warning: prompt file not found or unreadable; proceeding without detailed instructions.",
-                file=sys.stderr,
+            raise FileNotFoundError(
+                "Prompt file not found or unreadable. Cannot proceed without detailed instructions."
             )
         if preferences:
             prompt += f"""

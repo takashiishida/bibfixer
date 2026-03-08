@@ -9,7 +9,7 @@ from .agent import BibFixAgent
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Revise BibTeX entries using GPT-5-mini with web search"
+        description="Revise BibTeX entries using LLM with web search"
     )
     parser.add_argument(
         "-i", "--input",
@@ -28,7 +28,18 @@ def main() -> None:
     )
     parser.add_argument("-o", "--output", help="Output file (default: print to stdout)")
     parser.add_argument(
-        "--api-key", help="OpenAI API key (or set OPENAI_API_KEY env var)"
+        "--api-key", help="API key (or set OPENAI_API_KEY / OPENROUTER_API_KEY env var)"
+    )
+    parser.add_argument(
+        "--provider",
+        choices=["openai", "openrouter"],
+        default="openai",
+        help="LLM provider (default: openai)",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Override the default model name",
     )
 
     args = parser.parse_args()
@@ -48,7 +59,9 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        agent = BibFixAgent(api_key=args.api_key, prompt_file=args.prompt_file)
+        agent = BibFixAgent(api_key=args.api_key, prompt_file=args.prompt_file, provider=args.provider)
+        if args.model:
+            agent.model = args.model
     except ValueError as e:
         print(f"Error: {str(e)}", file=sys.stderr)
         sys.exit(1)
