@@ -87,9 +87,13 @@ With bibfixer, we have all authors and appropriate capitalization:
 pip install bibfixer
 ```
 
-2. Set up your OpenAI API key:
+2. Set up your API key:
 ```bash
+# For OpenAI (default provider):
 export OPENAI_API_KEY='your-api-key-here'
+
+# For OpenRouter:
+export OPENROUTER_API_KEY='your-api-key-here'
 ```
 
 ## Usage
@@ -115,6 +119,17 @@ bibfixer -i sample_input.bib --prompt-file prompts/default.md
 ```
 
 The complete revision instructions are in `prompts/default.md`. You can edit this file to match your style or point to another file using `--prompt-file`.
+
+Use OpenRouter for other models. We use Exa.ai via the `:online` model suffix for web search capabilities.
+
+```bash
+# Use OpenRouter with the default model:
+bibfixer -i sample_input.bib --provider openrouter
+
+# Use a specific model:
+bibfixer -i sample_input.bib --provider openrouter --model google/gemini-2.5-flash
+```
+
 
 ### Review
 Since bibfixer is experimental (see warning above), it's a good idea to diff the results. To quickly compare input and output, you can run:

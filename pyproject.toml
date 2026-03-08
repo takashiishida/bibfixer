@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bibfixer"
-version = "0.1.2"
+version = "0.2.0"
 description = "Fixes and standardizes BibTeX using LLM + web search"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -19,7 +19,7 @@ dependencies = [
 bibfixer = "bibfixer.cli:main"
 
 [tool.setuptools]
-packages = ["bibfixer"]
+packages = ["bibfixer", "bibfixer.prompts"]
 
 [tool.setuptools.package-data]
 bibfixer = ["prompts/default.md"]
