@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import streamlit as st
 import bibtexparser
 from bibtexparser.bwriter import BibTexWriter
@@ -81,6 +82,14 @@ with st.sidebar:
         height=120,
     )
 
+    workers = st.number_input(
+        "Workers",
+        min_value=1,
+        max_value=16,
+        value=1,
+        help="Number of parallel workers. Increase to speed up large .bib files.",
+    )
+
 
 bibtex_content = st.text_area(
     "BibTeX Content",
@@ -112,25 +121,33 @@ if st.button("Fix BibTeX", type="primary"):
             else:
                 progress_bar = st.progress(0)
                 status_text = st.empty()
-                revised_entries = []
+                n = len(db.entries)
 
-                for i, entry in enumerate(db.entries):
+                def _process(i, entry):
                     entry_id = entry.get("ID", f"entry_{i+1}")
-                    status_text.text(
-                        f"Processing entry {i+1}/{len(db.entries)}: {entry_id}"
-                    )
-
                     single_entry_db = BibDatabase()
                     single_entry_db.entries = [entry]
                     writer = BibTexWriter()
                     writer.order_entries_by = None
                     original_entry_text = writer.write(single_entry_db)
+                    revised = agent.revise_bibtex(original_entry_text, preferences)
+                    return i, entry_id, revised
 
-                    revised_entry_text = agent.revise_bibtex(
-                        original_entry_text, preferences
-                    )
-                    revised_entries.append(revised_entry_text)
-                    progress_bar.progress((i + 1) / len(db.entries))
+                revised_entries = [None] * n
+                done_count = 0
+                with ThreadPoolExecutor(max_workers=int(workers)) as executor:
+                    futures = {
+                        executor.submit(_process, i, entry): i
+                        for i, entry in enumerate(db.entries)
+                    }
+                    for future in as_completed(futures):
+                        i, entry_id, revised = future.result()
+                        revised_entries[i] = revised
+                        done_count += 1
+                        status_text.text(
+                            f"Completed {done_count}/{n}: {entry_id}"
+                        )
+                        progress_bar.progress(done_count / n)
 
                 status_text.text("Done!")
                 combined = "\n\n".join(revised_entries)
