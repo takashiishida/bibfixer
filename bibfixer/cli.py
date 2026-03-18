@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import bibtexparser
 from bibtexparser.bwriter import BibTexWriter
 from bibtexparser.bibdatabase import BibDatabase
@@ -40,6 +43,12 @@ def main() -> None:
         "--model",
         default=None,
         help="Override the default model name",
+    )
+    parser.add_argument(
+        "-w", "--workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers for processing entries (default: 1)",
     )
 
     args = parser.parse_args()
@@ -83,33 +92,51 @@ def main() -> None:
         writer.order_entries_by = None
         return writer.write(single_db)
 
-    revised_entries_text: list[str] = []
+    num_workers = max(1, args.workers)
+    n = len(entries)
+    label = "sequentially" if num_workers == 1 else f"with {num_workers} workers"
     print(
-        f"Found {len(entries)} entr{'y' if len(entries)==1 else 'ies'}; processing sequentially...",
+        f"Found {n} entr{'y' if n==1 else 'ies'}; processing {label}...",
         file=sys.stderr,
     )
-    for idx, entry in enumerate(entries, start=1):
+
+    def _process_entry(idx: int, entry: Dict[str, Any]) -> tuple[int, str, str, str | None]:
+        """Return (idx, original_text, revised_text, error_msg)."""
         key = entry.get("ID", f"entry_{idx}")
-        print(f"Revising {idx}/{len(entries)}: {key}", file=sys.stderr)
-        original_entry_text = _dump_single_entry(entry)
-        separator = "=" * 80
-        print(separator)
-        print("--- BEFORE ---")
-        print(original_entry_text.strip())
+        original_text = _dump_single_entry(entry)
         try:
-            revised_text = agent.revise_bibtex(original_entry_text, args.preferences)
-            revised_entries_text.append(revised_text.strip())
-            final_text = revised_text
+            revised = agent.revise_bibtex(original_text, args.preferences)
+            print(f"  Done {idx}/{n}: {key}", file=sys.stderr)
+            return idx, original_text, revised.strip(), None
         except Exception as e:
             print(
-                f"Error revising entry '{key}': {str(e)} — keeping original",
+                f"  Error revising entry '{key}': {str(e)} — keeping original",
                 file=sys.stderr,
             )
-            revised_entries_text.append(original_entry_text.strip())
-            final_text = original_entry_text
-        print("--- AFTER ----")
-        print(final_text.strip())
+            return idx, original_text, original_text.strip(), str(e)
+
+    # Process entries (parallel or sequential depending on num_workers)
+    results: list[tuple[int, str, str, str | None]] = [None] * n  # type: ignore[list-item]
+    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+        futures = {
+            executor.submit(_process_entry, idx, entry): idx
+            for idx, entry in enumerate(entries, start=1)
+        }
+        for future in as_completed(futures):
+            idx, original_text, revised_text, err = future.result()
+            results[idx - 1] = (idx, original_text, revised_text, err)
+
+    # Print before/after in order and collect revised text
+    revised_entries_text: list[str] = []
+    separator = "=" * 80
+    for idx, original_text, revised_text, err in results:
         print(separator)
+        print("--- BEFORE ---")
+        print(original_text.strip())
+        print("--- AFTER ----")
+        print(revised_text.strip())
+        print(separator)
+        revised_entries_text.append(revised_text)
 
     combined = "\n\n".join(revised_entries_text) + "\n"
 
