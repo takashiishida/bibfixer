@@ -15,6 +15,9 @@ dependencies = [
   "bibtexparser>=1.4.1,<2",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest"]
+
 [project.scripts]
 bibfixer = "bibfixer.cli:main"
 
