@@ -57,11 +57,25 @@ def main() -> None:
         print("Error: Input file must be a .bib file", file=sys.stderr)
         sys.exit(1)
 
+    # Never let console encoding (e.g. cp1252 on Windows) crash a run when
+    # printing entries that contain non-ASCII characters.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
+
     try:
-        with open(args.input_file, "r") as f:
+        # utf-8-sig also accepts a UTF-8 BOM, which Windows editors often add
+        with open(args.input_file, "r", encoding="utf-8-sig") as f:
             bibtex_content = f.read()
     except FileNotFoundError:
         print(f"Error: File '{args.input_file}' not found", file=sys.stderr)
+        sys.exit(1)
+    except UnicodeDecodeError as e:
+        print(
+            f"Error reading file: not valid UTF-8 ({str(e)}). "
+            "Please re-save the .bib file with UTF-8 encoding.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     except Exception as e:
         print(f"Error reading file: {str(e)}", file=sys.stderr)
@@ -115,6 +129,33 @@ def main() -> None:
             )
             return idx, original_text, original_text.strip(), str(e)
 
+    # Open the output file up front and write entries (in input order) as
+    # soon as they complete, so a failure partway through never discards the
+    # results of earlier (expensive) revisions.
+    out_f = None
+    if args.output:
+        try:
+            out_f = open(args.output, "w", encoding="utf-8")
+        except Exception as e:
+            print(f"Error opening output file: {str(e)}", file=sys.stderr)
+            sys.exit(1)
+
+    next_write = 0  # index into results of the next entry to write
+
+    def _flush_completed_prefix() -> None:
+        """Write all consecutive completed entries starting at next_write."""
+        nonlocal next_write
+        while next_write < n and results[next_write] is not None:
+            try:
+                if next_write > 0:
+                    out_f.write("\n")
+                out_f.write(results[next_write][2] + "\n")
+                out_f.flush()
+            except Exception as e:
+                print(f"Error writing output: {str(e)}", file=sys.stderr)
+                sys.exit(1)
+            next_write += 1
+
     # Process entries (parallel or sequential depending on num_workers)
     results: list[tuple[int, str, str, str | None]] = [None] * n  # type: ignore[list-item]
     with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -125,9 +166,10 @@ def main() -> None:
         for future in as_completed(futures):
             idx, original_text, revised_text, err = future.result()
             results[idx - 1] = (idx, original_text, revised_text, err)
+            if out_f:
+                _flush_completed_prefix()
 
-    # Print before/after in order and collect revised text
-    revised_entries_text: list[str] = []
+    # Print before/after in order
     separator = "=" * 80
     for idx, original_text, revised_text, err in results:
         print(separator)
@@ -136,21 +178,13 @@ def main() -> None:
         print("--- AFTER ----")
         print(revised_text.strip())
         print(separator)
-        revised_entries_text.append(revised_text)
 
-    combined = "\n\n".join(revised_entries_text) + "\n"
-
-    if args.output:
-        try:
-            with open(args.output, "w") as f:
-                f.write(combined)
-            print(
-                f"Revised {len(entries)} entries written to {args.output}",
-                file=sys.stderr,
-            )
-        except Exception as e:
-            print(f"Error writing output: {str(e)}", file=sys.stderr)
-            sys.exit(1)
+    if out_f:
+        out_f.close()
+        print(
+            f"Revised {len(entries)} entries written to {args.output}",
+            file=sys.stderr,
+        )
     else:
         print(
             "No output file specified. Preview shown above; not writing output file.",
